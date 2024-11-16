@@ -4,6 +4,10 @@ bits 16
 
 %define ENDL 0x00, 0x0A
 
+; FAT 12 header
+jmp short start
+nop
+
 start:
   jmp main
 
