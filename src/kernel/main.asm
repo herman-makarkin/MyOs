@@ -1,58 +1,40 @@
-org 0x7C00
+org 0x0
 bits 16
 
+global start
 
-%define ENDL 0x00, 0x0A
 
-; FAT 12 header
-jmp short start
-nop
+%define ENDL 0x0D, 0x0A
+
 
 start:
-  jmp main
-
-
-; Prints a string
-prints:
-  push si
-  push ax
-
-.loop:
-  lodsb
-  or al, al
-  jz .done
-
-  mov ah, 0x0e
-  mov bh, 0
-  int 0x10
-
-  jmp .loop
-
-
-.done:
-  pop ax
-  pop si
-  ret
-
-
-
-main:
-  mov ax, 0
-  mov ds, ax
-  mov es, ax
-  
-  mov ss, ax
-  mov sp, 0x7C00
-
-  mov si, msg_hello_world
-  call prints
-
-  hlt
+    mov si, msg_hello
+    call prints
 
 .halt:
-  jmp .halt
+    cli
+    hlt
 
+prints:
+    push si
+    push ax
+    push bx
 
-msg_hello_world: db 'Hello world!', ENDL, 0
-times 510-($-$$) db 0
-dw 0AA55h
+.loop:
+    lodsb
+    or al, al
+    jz .done
+
+    mov ah, 0x0E
+    mov bh, 0
+    int 0x10
+
+    jmp .loop
+
+.done:
+    pop bx
+    pop ax
+    pop si
+    ret
+
+msg_hello: db 'Hello world!', ENDL, 0
