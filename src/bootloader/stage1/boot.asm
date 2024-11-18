@@ -66,52 +66,49 @@ start:
     mov ax, [bdb_sectors_per_fat]
     mov bl, [bdb_fat_count]
     xor bh, bh
-    mul bx                              ; ax = (fats * sectors_per_fat)
-    add ax, [bdb_reserved_sectors]      ; ax = LBA of root directory
+    mul bx
+    add ax, [bdb_reserved_sectors]
     push ax
 
-    ; compute size of root directory = (32 * number_of_entries) / bytes_per_sector
     mov ax, [bdb_dir_entries_count]
-    shl ax, 5                           ; ax *= 32
-    xor dx, dx                          ; dx = 0
-    div word [bdb_bytes_per_sector]     ; number of sectors we need to read
+    shl ax, 5
+    xor dx, dx
+    div word [bdb_bytes_per_sector]
 
-    test dx, dx                         ; if dx != 0, add 1
+    test dx, dx
     jz .root_dir_after
-    inc ax                              ; division remainder != 0, add 1
-                                        ; this means we have a sector only partially filled with entries
+    inc ax
+
 .root_dir_after:
 
-    ; read root directory
-    mov cl, al                          ; cl = number of sectors to read = size of root directory
-    pop ax                              ; ax = LBA of root directory
-    mov dl, [ebr_drive_number]          ; dl = drive number (we saved it previously)
-    mov bx, buffer                      ; es:bx = buffer
+    mov cl, al
+    pop ax
+    mov dl, [ebr_drive_number]
+    mov bx, buffer
     call disk_read
 
-    ; search for kernel.bin
     xor bx, bx
     mov di, buffer
 
-.search_kernel:
-    mov si, file_kernel_bin
-    mov cx, 11                          ; compare up to 11 characters
+.search_boot2:
+    mov si, file_boot2_bin
+    mov cx, 11
     push di
     repe cmpsb
     pop di
-    je .found_kernel
+    je .found_boot2
 
     add di, 32
     inc bx
     cmp bx, [bdb_dir_entries_count]
-    jl .search_kernel
+    jl .search_boot2
 
-    jmp kernel_not_found
+    jmp boot2_not_found
 
-.found_kernel:
+.found_boot2:
 
     mov ax, [di + 26]
-    mov [kernel_cluster], ax
+    mov [boot2_cluster], ax
 
     mov ax, [bdb_reserved_sectors]
     mov bx, buffer
@@ -119,12 +116,12 @@ start:
     mov dl, [ebr_drive_number]
     call disk_read
 
-    mov bx, KERNEL_LOAD_SEGMENT
+    mov bx, boot2_LOAD_SEGMENT
     mov es, bx
-    mov bx, KERNEL_LOAD_OFFSET
+    mov bx, boot2_LOAD_OFFSET
 
-.load_kernel_loop:
-    mov ax, [kernel_cluster]
+.load_boot2_loop:
+    mov ax, [boot2_cluster]
 
     ; !FIX
     add ax, 31
@@ -135,7 +132,7 @@ start:
 
     add bx, [bdb_bytes_per_sector]
 
-    mov ax, [kernel_cluster]
+    mov ax, [boot2_cluster]
     mov cx, 3
     mul cx
     mov cx, 2
@@ -159,18 +156,18 @@ start:
     cmp ax, 0x0FF8
     jae .read_finish
 
-    mov [kernel_cluster], ax
-    jmp .load_kernel_loop
+    mov [boot2_cluster], ax
+    jmp .load_boot2_loop
 
 .read_finish:
 
     mov dl, [ebr_drive_number]
 
-    mov ax, KERNEL_LOAD_SEGMENT
+    mov ax, boot2_LOAD_SEGMENT
     mov ds, ax
     mov es, ax
 
-    jmp KERNEL_LOAD_SEGMENT:KERNEL_LOAD_OFFSET
+    jmp boot2_LOAD_SEGMENT:boot2_LOAD_OFFSET
 
     jmp wait_key_and_reboot
 
@@ -186,8 +183,8 @@ floppy_error:
     call prints
     jmp wait_key_and_reboot
 
-kernel_not_found:
-    mov si, msg_kernel_not_found
+boot2_not_found:
+    mov si, msg_boot2_not_found
     call prints
     jmp wait_key_and_reboot
 ; ERRORS END
@@ -302,12 +299,12 @@ disk_reset:
 
 msg_loading:            db 'Loading...', ENDL, 0
 msg_read_failed:        db 'Read from disk failed!', ENDL, 0
-msg_kernel_not_found:   db 'KERNEL.BIN file not found!', ENDL, 0
-file_kernel_bin:        db 'KERNEL  BIN'
-kernel_cluster:         dw 0
+msg_boot2_not_found:   db 'STAGE2.BIN file not found!', ENDL, 0
+file_boot2_bin:        db 'STAGE2  BIN'
+boot2_cluster:         dw 0
 
-KERNEL_LOAD_SEGMENT     equ 0x2000
-KERNEL_LOAD_OFFSET      equ 0
+boot2_LOAD_SEGMENT     equ 0x2000
+boot2_LOAD_OFFSET      equ 0
 
 
 times 510-($-$$) db 0
