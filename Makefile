@@ -1,18 +1,21 @@
-ASM=nasm
-CC=clang
-CPP=clang++
-CC16=/usr/bin/watcom/binl64/wcc
-LD16=/usr/bin/watcom/binl64/wlink
+# ASM=nasm
+# CC=clang
+# CPP=clang++
+# CC16=/usr/bin/watcom/binl64/wcc
+# LD16=/usr/bin/watcom/binl64/wlink
+#
+# SRC_DIR=src
+# BUILD_DIR=build
+# IMG=main_floppy.img
 
-SRC_DIR=src
-BUILD_DIR=build
-IMG=main_floppy.img
+include build_scripts/config.mk
 
 .PHONY: all floppy_image kernel bootloader clean always
 
 
 floppy_image: $(BUILD_DIR)/$(IMG)
 
+include build_scripts/toolchain.mk
 $(BUILD_DIR)/$(IMG): bootloader kernel
 	dd if=/dev/zero of=$(BUILD_DIR)/$(IMG) bs=512 count=2880
 	mkfs.fat -F 12 -n "NBOS" $(BUILD_DIR)/$(IMG)
